@@ -1,77 +1,192 @@
-## Depth Pro: Sharp Monocular Metric Depth in Less Than a Second
+# Distance Estimation Between Moving Cameras and Objects
 
-This software project accompanies the research paper:
-**[Depth Pro: Sharp Monocular Metric Depth in Less Than a Second](https://arxiv.org/abs/2410.02073)**,
-_Aleksei Bochkovskii, Amaël Delaunoy, Hugo Germain, Marcel Santos, Yichao Zhou, Stephan R. Richter, and Vladlen Koltun_.
+A computer vision system that calculates distances to road objects (vehicles, pedestrians, cyclists) in real-time using monocular depth estimation and object detection. Built for driving safety applications.
 
-![](data/depth-pro-teaser.jpg)
+![Demo](annotated_videos/demo.gif)
 
-We present a foundation model for zero-shot metric monocular depth estimation. Our model, Depth Pro, synthesizes high-resolution depth maps with unparalleled sharpness and high-frequency details. The predictions are metric, with absolute scale, without relying on the availability of metadata such as camera intrinsics. And the model is fast, producing a 2.25-megapixel depth map in 0.3 seconds on a standard GPU. These characteristics are enabled by a number of technical contributions, including an efficient multi-scale vision transformer for dense prediction, a training protocol that combines real and synthetic datasets to achieve high metric accuracy alongside fine boundary tracing, dedicated evaluation metrics for boundary accuracy in estimated depth maps, and state-of-the-art focal length estimation from a single image.
+## Overview
 
-The model in this repository is a reference implementation, which has been re-trained. Its performance is close to the model reported in the paper but does not match it exactly.
+This project combines **Apple's ML-Depth-Pro** depth estimation model with **YOLO11** object detection to provide real-time distance measurements to road objects from a single camera feed. The system is designed for potential use in driving assistance systems, driving safety research.
 
-## Getting Started
+## Features
 
-We recommend setting up a virtual environment. Using e.g. miniconda, the `depth_pro` package can be installed via:
+- **Real-time processing** of video streams
+- **Monocular depth estimation** - works with single camera (no stereo required)
+- **Multi-object tracking** with persistent IDs across frames
+- **Risk classification** (Dangerous/Cautious/Safe) based on distance
+- **Temporal smoothing** for stable distance estimates
+- **Performance optimisations** including frame skipping and half-precision inference
+- **Batch processing mode** for offline video analysis
+
+## Implementation
+
+### Components
+
+1. **Object Detection**: YOLO11s for real-time detection of road-relevant classes
+
+   - Detects: vehicles (car, truck, bus, motorcycle), pedestrians, cyclists
+   - Tuned confidence thresholds for safety applications
+
+2. **Depth Estimation**: Apple ML-Depth-Pro
+
+   - Monocular metric depth (absolute scale without camera calibration)
+   - High-resolution depth maps with sharp boundaries
+   - Fast inference (~0.3s per frame on standard GPU)
+
+3. **Object Tracking**: IoU-based tracking algorithm
+
+   - Maintains consistent object IDs across frames
+   - Handles occlusions and temporary disappearances
+
+### Technologies Used
+
+- **Python 3.9+**
+- **PyTorch** - Deep learning framework
+- **Ultralytics YOLO11** - Object detection
+- **Apple ML-Depth-Pro** - Monocular depth estimation
+- **OpenCV** - Bouding box utilities
+
+## Installation
+
+### Prerequisites
+
+- Python 3.9 or higher
+- CUDA-capable GPU or Apple Silicon Mac using MPS
+
+### Setup
+
+1. **Clone the repository**
 
 ```bash
-conda create -n depth-pro -y python=3.9
-conda activate depth-pro
+git clone https://github.com/yourusername/road-object-distance-estimation.git
+cd road-object-distance-estimation
+```
 
+2. **Create virtual environment**
+
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+3. **Install dependencies**
+
+```bash
 pip install -e .
+pip install ultralytics opencv-python
 ```
 
-To download pretrained checkpoints follow the code snippet below:
+4. **Download ML-Depth-Pro model weights**
 
 ```bash
-source get_pretrained_models.sh   # Files will be downloaded to `checkpoints` directory.
+source get_pretrained_models.sh
+# Downloads checkpoint to ./checkpoints/depth_pro.pt
 ```
 
-### Running from commandline
+## 🔨 Usage
 
-We provide a helper script to directly run the model on a single image:
+### Basic Camera Usage
 
 ```bash
-# Run prediction on a single image:
-depth-pro-run -i ./data/example.jpg
-# Run `depth-pro-run -h` for available options.
+python main.py
 ```
 
-### Running from python
+### Process Video File
 
-```python
-from PIL import Image
-import depth_pro
-
-# Load model and preprocessing transform
-model, transform = depth_pro.create_model_and_transforms()
-model.eval()
-
-# Load and preprocess an image.
-image, _, f_px = depth_pro.load_rgb(image_path)
-image = transform(image)
-
-# Run inference.
-prediction = model.infer(image, f_px=f_px)
-depth = prediction["depth"]  # Depth in [m].
-focallength_px = prediction["focallength_px"]  # Focal length in pixels.
+```bash
+python main.py --video path/to/video.mp4
 ```
 
-### Evaluation (boundary metrics)
+### Save Annotated Output
 
-Our boundary metrics can be found under `eval/boundary_metrics.py` and used as follows:
-
-```python
-# for a depth-based dataset
-boundary_f1 = SI_boundary_F1(predicted_depth, target_depth)
-
-# for a mask-based dataset (image matting / segmentation)
-boundary_recall = SI_boundary_Recall(predicted_depth, target_mask)
+```bash
+python main.py --video input.mp4 --output annotated_output.mp4
 ```
+
+### Show Depth Map Visualization
+
+```bash
+python main.py --video input.mp4 --show_depth
+```
+
+### Batch Processing (No Display)
+
+```bash
+python main.py --video input.mp4 --output output.mp4 --batch_process
+```
+
+### Performance Optimisation
+
+```bash
+# Use smaller input resolution for faster processing
+python main.py --video input.mp4 --resize_factor 0.5
+
+# Use faster YOLO model
+python main.py --yolo_model yolo11n.pt
+
+# Disable optimisations (for debugging)
+python main.py --no_optimisation
+```
+
+### Full Example
+
+```bash
+python main.py --video videos/driving.mp4 --output annotated_videos/driving_analyzed.mp4 --batch_process --resize_factor 0.5 --yolo_model yolo11s.pt
+```
+
+## Project Structure
+
+```
+road-object-distance-estimation/
+├── src/
+│   ├── depth_pro/                 # ML-Depth-Pro model code
+│   └── scripts/
+│       ├── depth_estimator.py    # Depth estimation wrapper
+│       └── yolo_detect.py        # YOLO detection + tracking
+├── main.py                       # Main application entry point
+├── checkpoints/                  # Model weights (downloaded)
+├── README.md
+├── requirements.txt
+└── .gitignore
+```
+
+## Limitations
+
+- **Single camera**: No stereo depth information
+- **Computational cost**: Requires GPU for real-time performance
+- **Weather conditions**: Performance may degrade given different weather conditions
+- **Depth accuracy**: Monocular depth has inherent scale ambiguity
+- **Small objects**: Distance estimation less reliable for distant small objects
+
+## Future Improvements
+
+- Add lane detection for more context when assessing risk
+- Support for multiple camera angles
+- Export distance logs for analysis
+
+## Acknowledgments
+
+This project builds upon the work of:
+
+- **[Apple ML-Depth-Pro](https://github.com/apple/ml-depth-pro)** - Monocular depth estimation
+  - Bochkovskii et al., "Depth Pro: Sharp Monocular Metric Depth in Less Than a Second"
+- **[Ultralytics YOLO11](https://github.com/ultralytics/ultralytics)** - Object detection
+
+## License
+
+This project uses Apple's ML-Depth-Pro under their [license terms](LICENSE).
+See the original [Apple repository](https://github.com/apple/ml-depth-pro) for details.
+
+## Author
+
+**Matthew Privitera**
+
+- GitHub: [@mattpri22](https://github.com/mattpri22)
+- Email: matthewprivitera@gmail.com
 
 ## Citation
 
-If you find our work useful, please cite the following paper:
+If you use this project in your research, please cite the original Depth Pro paper:
 
 ```bibtex
 @inproceedings{Bochkovskii2024:arxiv,
@@ -83,15 +198,3 @@ If you find our work useful, please cite the following paper:
   url        = {https://arxiv.org/abs/2410.02073},
 }
 ```
-
-## License
-
-This sample code is released under the [LICENSE](LICENSE) terms.
-
-The model weights are released under the [LICENSE](LICENSE) terms.
-
-## Acknowledgements
-
-Our codebase is built using multiple opensource contributions, please see [Acknowledgements](ACKNOWLEDGEMENTS.md) for more details.
-
-Please check the paper for a complete list of references and datasets used in this work.
