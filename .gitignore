@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+venv/
+.env
+.venv/
+
+# Mac
+.DS_Store
+
+# Model weights / outputs / data
+*.pt
+*.pth
+models/
+weights/
+data/
+videos/
+annotated_videos/
+outputs/
+
+# IDEs
+.vscode/
+.idea/
