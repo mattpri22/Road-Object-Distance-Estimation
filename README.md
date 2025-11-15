@@ -8,7 +8,7 @@ A computer vision system that calculates distances to road objects (vehicles, pe
 
 ## Overview
 
-This project combines **Apple's ML-Depth-Pro** depth estimation model with **YOLO11** object detection to provide real-time distance measurements to road objects from a single camera feed. The system is designed for potential use in driving assistance systems, driving safety research.
+This project combines **Apple's ML-Depth-Pro** depth estimation model with **YOLO11** object detection to provide real-time distance measurements to road objects from a single camera feed. The system is designed for potential use in driving assistance systems, and driving safety research.
 
 ## Features
 
